@@ -1,15 +1,26 @@
 import streamlit as st
 import time
 import pandas as pd
+import requests
 from urllib.parse import urlparse
 from usp.tree import sitemap_tree_for_homepage
 
-st.title("URL grabber from sitemap file")
-st.markdown("This is a tool for iFOCUS.sk Link Nest plugin - Internal linking for Wordpress")
+"""
+# URL grabber from sitemap file
+This is a tool for [iFOCUS.sk](https://www.ifocus.sk) Link Nest plugin - Internal linking for Wordpress
 
-# use the suppress_st_warning parameter to suppress the warning message
-@st.cache(suppress_st_warning=True)
+We will find your sitemap file. It will take few seconds.
+"""
 
+st.markdown('''
+<style>
+.stApp [data-testid="stToolbar"]{
+    display:none;
+}
+</style>
+''', unsafe_allow_html=True)
+
+@st.cache(suppress_st_warning=True, allow_output_mutation=True)
 def sitemap_urls(url):
     with st.spinner("Wait for it..."):
         time.sleep(10)
@@ -31,15 +42,24 @@ def sitemap_urls(url):
         
     return urls
     
-x = st.text_input("Insert Your URL. Example: yourdomain.com We will find your sitemap file. It will take few seconds.")
+x = st.text_input("")
 
 if x:
-    try:
-        urls = sitemap_urls(x)
-        df = pd.DataFrame({"Keyword": "somekeyword", "Atribute (title)": "somekeyword", "Atribute (rel)": "search", "URL": urls})
-        st.download_button("Download URLs as CSV", df.to_csv(index=False), file_name="sitemap-urls.csv",)
+    # Check if the URL has a scheme (http or https)
+    if not urlparse(x).scheme:
+        # If the URL doesn't have a scheme, add 'http://' to the beginning
+        x = 'http://' + x
         
+    # Check if the URL responds with a status code of 200
+    try:
+        if requests.get(x).status_code == 200:
+            urls = sitemap_urls(x)
+            df = pd.DataFrame({"Keyword": "somekeyword", "Atribute (title)": "somekeyword", "Atribute (rel)": "search", "URL": urls})
+            st.download_button("Download URLs as CSV", df.to_csv(index=False), file_name="sitemap-urls.csv",)
+
+        else:
+            st.error("ERROR: Please enter a valid URL that responds with a status code of 200.")
     except Exception as e:
-        st.write("An error occurred:", e)
+        st.error("An error occurred: " + str(e))
 else:
-    st.write("INFO: Please enter a valid URL.")
+    st.write("INFO: Please enter a valid URL. (Example: yourdomain.com)")
